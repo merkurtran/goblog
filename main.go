@@ -32,7 +32,15 @@ func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "创建新的文章")
+	err := r.ParseForm()
+	if err != nil {
+		fmt.Fprintf(w, "Plese provide the correct data.")
+		return
+	}
+	title := r.PostForm.Get("title")
+	fmt.Fprintf(w, "POST PostForm: %v <br>", r.PostForm)
+	fmt.Fprintf(w, "POST Form: %v <br>", r.Form)
+	fmt.Fprintf(w, "The value of the title: %v <br>", title)
 }
 
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
