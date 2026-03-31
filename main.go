@@ -2,13 +2,21 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gorilla/mux"
 )
 
 var router = mux.NewRouter()
+
+type ArticlesFormData struct {
+	Title, Body string
+	URL         *url.URL
+	Errors      map[string]string
+}
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -32,15 +40,72 @@ func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
-	if err != nil {
-		fmt.Fprintf(w, "Plese provide the correct data.")
-		return
+
+	title := r.PostFormValue("title")
+	body := r.PostFormValue("body")
+
+	errors := make(map[string]string)
+
+	if title == "" {
+		errors["title"] = "Title can't be left blank"
+	} else if len(title) < 3 || len(title) > 40 {
+		errors["title"] = "Title length must between 3 and 40 characters"
 	}
-	title := r.PostForm.Get("title")
-	fmt.Fprintf(w, "POST PostForm: %v <br>", r.PostForm)
-	fmt.Fprintf(w, "POST Form: %v <br>", r.Form)
-	fmt.Fprintf(w, "The value of the title: %v <br>", title)
+
+	if body == "" {
+		errors["body"] = "Content can't be left blank"
+	} else if len(body) < 10 {
+		errors["body"] = "Content length must greater than 10 or equal 10"
+	}
+
+	if len(errors) == 0 {
+		fmt.Fprint(w, "验证通过!<br>")
+		fmt.Fprintf(w, "title 的值为: %v <br>", title)
+		fmt.Fprintf(w, "title 的长度为: %v <br>", len(title))
+		fmt.Fprintf(w, "body 的值为: %v <br>", body)
+		fmt.Fprintf(w, "body 的长度为: %v <br>", len(body))
+	} else {
+
+		html := `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>创建文章 —— 我的技术博客</title>
+    <style type="text/css">.error {color: red;}</style>
+</head>
+<body>
+    <form action="{{ .URL }}" method="post">
+        <p><input type="text" name="title" value="{{ .Title }}"></p>
+        {{ with .Errors.title }}
+        <p class="error">{{ . }}</p>
+        {{ end }}
+        <p><textarea name="body" cols="30" rows="10">{{ .Body }}</textarea></p>
+        {{ with .Errors.body }}
+        <p class="error">{{ . }}</p>
+        {{ end }}
+        <p><button type="submit">提交</button></p>
+    </form>
+</body>
+</html>
+`
+		storeURL, _ := router.Get("articles.store").URL()
+
+		data := ArticlesFormData{
+			Title:  title,
+			Body:   body,
+			URL:    storeURL,
+			Errors: errors,
+		}
+		tmpl, err := template.New("create-form").Parse(html)
+		if err != nil {
+			panic(err)
+		}
+
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
@@ -101,5 +166,5 @@ func main() {
 
 	router.Use(forceHTMLMiddleware)
 
-	http.ListenAndServe(":3000", removeTrailingSlash(router))
+	http.ListenAndServe(":3002", removeTrailingSlash(router))
 }
