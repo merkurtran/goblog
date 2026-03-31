@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 )
 
