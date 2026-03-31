@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -92,11 +93,14 @@ func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(errors) == 0 {
-		fmt.Fprint(w, "验证通过!<br>")
-		fmt.Fprintf(w, "title 的值为: %v <br>", title)
-		fmt.Fprintf(w, "title 的长度为: %v <br>", len(title))
-		fmt.Fprintf(w, "body 的值为: %v <br>", body)
-		fmt.Fprintf(w, "body 的长度为: %v <br>", len(body))
+		lastInsertID, err := saveArticleToDB(title, body)
+		if lastInsertID > 0 {
+			fmt.Fprintf(w, "Insert success, ID is"+strconv.FormatInt(lastInsertID, 10))
+		} else {
+			checkError(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Internal server error")
+		}
 	} else {
 
 		storeURL, _ := router.Get("articles.store").URL()
@@ -107,7 +111,7 @@ func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
 			URL:    storeURL,
 			Errors: errors,
 		}
-		tmpl, err := template.ParseFiles("resources/view/articles/create.gohtml")
+		tmpl, err := template.ParseFiles("resources/views/articles/create.gohtml")
 		if err != nil {
 			panic(err)
 		}
@@ -117,6 +121,30 @@ func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 	}
+}
+
+func saveArticleToDB(title string, body string) (int64, error) {
+	var (
+		id   int64
+		err  error
+		rs   sql.Result
+		stmt *sql.Stmt
+	)
+	stmt, err = db.Prepare("INSERT INTO articles (title, body) VALUE(?,?)")
+	if err != nil {
+		return 0, nil
+	}
+
+	defer stmt.Close()
+
+	rs, err = stmt.Exec(title, body)
+	if err != nil {
+		return 0, nil
+	}
+	if id, err = rs.LastInsertId(); id > 0 {
+		return id, nil
+	}
+	return 0, err
 }
 
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +179,7 @@ func articlesCreateHandler(w http.ResponseWriter, r *http.Request) {
 		URL:    storeURL,
 		Errors: nil,
 	}
-	tmpl, err := template.ParseFiles("resources/view/articles/create.gohtml")
+	tmpl, err := template.ParseFiles("resources/views/articles/create.gohtml")
 	if err != nil {
 		panic(err)
 	}
