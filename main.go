@@ -24,6 +24,11 @@ type ArticlesFormData struct {
 	Errors      map[string]string
 }
 
+type Article struct {
+	Title, Body string
+	ID          int64
+}
+
 func initDB() {
 	var err error
 	config := mysql.Config{
@@ -54,23 +59,43 @@ func checkError(err error) {
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Fprint(w, "<h1>Hello, 欢迎来到 goblog！</h1>")
+	fmt.Fprint(w, "<h1>Hello, Welcome to goblog！</h1>")
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprint(w, "<h1>请求页面未找到 :(</h1><p>如有疑惑，请联系我们。</p>")
+	fmt.Fprint(w, "<h1>The requested page was not found :(</h1><p>If you have any questions, please contact us.</p>")
 }
 
 func articlesShowHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	fmt.Fprint(w, "文章 ID："+id)
+
+	article := Article{}
+	query := "SELECT * FROM articles WHERE id = ?"
+	err := db.QueryRow(query, id).Scan(&article.ID, &article.Title, &article.Body)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "404 article not found")
+		} else {
+			checkError(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "Internal Server error")
+		}
+	} else {
+		tmpl, err := template.ParseFiles("resources/views/articles/show.gohtml")
+		checkError(err)
+		err = tmpl.Execute(w, article)
+		checkError(err)
+	}
+	fmt.Fprint(w, "articles ID："+id)
 }
 
 func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "访问文章列表")
+	fmt.Fprint(w, "view articles list")
 }
 
 func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
@@ -149,8 +174,9 @@ func saveArticleToDB(title string, body string) (int64, error) {
 
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "此博客是用以记录编程笔记，如您有反馈或建议，请联系 "+
-		"<a href=\"mailto:summer@example.com\">summer@example.com</a>")
+	fmt.Fprint(w,
+		"This blog is intended for recording programming notes. If you have any feedback or suggestions, please contact us. "+
+			"<a href=\"mailto:summer@example.com\">summer@example.com</a>")
 }
 
 func forceHTMLMiddleware(next http.Handler) http.Handler {
@@ -213,7 +239,7 @@ func main() {
 	router.HandleFunc("/articles", articlesStoreHandler).Methods("POST").Name("articles.store")
 	router.HandleFunc("/articles/create", articlesCreateHandler).Methods("GET").Name("articles.create")
 
-	// 自定义 404 页面
+	// Custom 404 page
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
 	router.Use(forceHTMLMiddleware)
