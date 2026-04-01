@@ -69,12 +69,9 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func articlesShowHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["id"]
+	id := getRouteVariable("id", r)
 
-	article := Article{}
-	query := "SELECT * FROM articles WHERE id = ?"
-	err := db.QueryRow(query, id).Scan(&article.ID, &article.Title, &article.Body)
+	article, err := getArticleByID(id)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -103,24 +100,12 @@ func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
 	title := r.PostFormValue("title")
 	body := r.PostFormValue("body")
 
-	errors := make(map[string]string)
-
-	if title == "" {
-		errors["title"] = "Title can't be left blank"
-	} else if len(title) < 3 || len(title) > 40 {
-		errors["title"] = "Title length must between 3 and 40 characters"
-	}
-
-	if body == "" {
-		errors["body"] = "Content can't be left blank"
-	} else if len(body) < 10 {
-		errors["body"] = "Content length must greater than 10 or equal 10"
-	}
+	errors := validateArticleFormData(title, body)
 
 	if len(errors) == 0 {
 		lastInsertID, err := saveArticleToDB(title, body)
 		if lastInsertID > 0 {
-			fmt.Fprintf(w, "Insert success, ID is"+strconv.FormatInt(lastInsertID, 10))
+			fmt.Fprintf(w, "%s", "Insert success, ID is"+strconv.FormatInt(lastInsertID, 10))
 		} else {
 			checkError(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -227,6 +212,117 @@ func createTables() {
 	checkError(err)
 }
 
+func articlesEditHandler(w http.ResponseWriter, r *http.Request) {
+	id := getRouteVariable("id", r)
+
+	article, err := getArticleByID(id)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "404 article not found")
+		} else {
+			checkError(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "Internal Server error")
+		}
+	} else {
+		updateURL, _ := router.Get("articles.update").URL("id", id)
+		data := ArticlesFormData{
+			Title:  article.Title,
+			Body:   article.Body,
+			URL:    updateURL,
+			Errors: nil,
+		}
+		tmpl, err := template.ParseFiles("resources/views/articles/edit.gohtml")
+		checkError(err)
+
+		err = tmpl.Execute(w, data)
+		checkError(err)
+	}
+}
+
+func articlesUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	id := getRouteVariable("id", r)
+
+	_, err := getArticleByID(id)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "404 article not found")
+		} else {
+			checkError(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "Internal server error")
+		}
+	} else {
+		title := r.PostFormValue("title")
+		body := r.PostFormValue("body")
+
+		errors := validateArticleFormData(title, body)
+
+		if len(errors) == 0 {
+			query := "UPDATE articles SET title = ?, body = ? WHERE id = ?"
+			rs, err := db.Exec(query, title, body, id)
+
+			if err != nil {
+				checkError(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(w, "Internal server error")
+			}
+
+			if n, _ := rs.RowsAffected(); n > 0 {
+				showURL, _ := router.Get("articles.show").URL("id", id)
+				http.Redirect(w, r, showURL.String(), http.StatusFound)
+			} else {
+				fmt.Fprint(w, "Nerve update")
+			}
+		} else {
+			updateURL, _ := router.Get("articles.update").URL("id", id)
+			data := ArticlesFormData{
+				Title:  title,
+				Body:   body,
+				URL:    updateURL,
+				Errors: errors,
+			}
+			tmpl, err := template.ParseFiles("resources/views/articles/edit.gohtml")
+			checkError(err)
+
+			err = tmpl.Execute(w, data)
+			checkError(err)
+		}
+	}
+}
+
+func validateArticleFormData(title string, body string) map[string]string {
+	errors := make(map[string]string)
+	if title == "" {
+		errors["title"] = "Title can't be left blank"
+	} else if len(title) < 3 || len(title) > 40 {
+		errors["title"] = "Title length must between 3 and 40 characters"
+	}
+
+	if body == "" {
+		errors["body"] = "Content can't be left blank"
+	} else if len(body) < 10 {
+		errors["body"] = "Content length must greater than 10 or equal 10"
+	}
+	return errors
+}
+
+func getRouteVariable(parameterName string, r *http.Request) string {
+	vars := mux.Vars(r)
+	return vars[parameterName]
+}
+
+func getArticleByID(id string) (Article, error) {
+	article := Article{}
+	query := "SELECT * FROM articles WHERE id = ?"
+	err := db.QueryRow(query, id).Scan(&article.ID, &article.Title, &article.Body)
+	return article, err
+}
+
 func main() {
 	initDB()
 	createTables()
@@ -238,6 +334,8 @@ func main() {
 	router.HandleFunc("/articles", articlesIndexHandler).Methods("GET").Name("articles.index")
 	router.HandleFunc("/articles", articlesStoreHandler).Methods("POST").Name("articles.store")
 	router.HandleFunc("/articles/create", articlesCreateHandler).Methods("GET").Name("articles.create")
+	router.HandleFunc("/articles/{id:[0-9]+}", articlesEditHandler).Methods("GET").Name("articles.edit")
+	router.HandleFunc("/articles/{id:[0-9]+}", articlesUpdateHandler).Methods("POST").Name("srticles.update")
 
 	// Custom 404 page
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
