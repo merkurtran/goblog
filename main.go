@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/merkurtran/goblog/pkg/logger"
 	"github.com/merkurtran/goblog/pkg/route"
+	"github.com/merkurtran/goblog/pkg/types"
 )
 
 var router *mux.Router
@@ -78,7 +79,7 @@ func articlesShowHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "Internal Server error")
 		}
 	} else {
-		tmpl, err := template.New("show.gohtml").Funcs(template.FuncMap{"RouteName2URL": route.Name2URL, "Int64ToString": Int64ToString}).ParseFiles("resources/views/articles/show.gohtml")
+		tmpl, err := template.New("show.gohtml").Funcs(template.FuncMap{"RouteName2URL": route.Name2URL, "Int64ToString": types.Int64ToString}).ParseFiles("resources/views/articles/show.gohtml")
 		logger.LogError(err)
 		err = tmpl.Execute(w, article)
 		logger.LogError(err)
@@ -93,10 +94,6 @@ func RouteName2URL(routename string, pairs ...string) string {
 		return ""
 	}
 	return url.String()
-}
-
-func Int64ToString(num int64) string {
-	return strconv.FormatInt(num, 10)
 }
 
 func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
