@@ -13,9 +13,10 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"github.com/merkurtran/goblog/pkg/route"
 )
 
-var router = mux.NewRouter()
+var router *mux.Router
 var db *sql.DB
 
 type ArticlesFormData struct {
@@ -83,7 +84,7 @@ func articlesShowHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "Internal Server error")
 		}
 	} else {
-		tmpl, err := template.New("show.gohtml").Funcs(template.FuncMap{"RouteName2URL": RouteName2URL, "Int64ToString": Int64ToString}).ParseFiles("resources/views/articles/show.gohtml")
+		tmpl, err := template.New("show.gohtml").Funcs(template.FuncMap{"RouteName2URL": route.Name2URL, "Int64ToString": Int64ToString}).ParseFiles("resources/views/articles/show.gohtml")
 		checkError(err)
 		err = tmpl.Execute(w, article)
 		checkError(err)
@@ -410,6 +411,9 @@ func (a Article) Delete() (rowsAffected int64, err error) {
 func main() {
 	initDB()
 	createTables()
+
+	route.Initialize()
+	router = route.Router
 
 	router.HandleFunc("/", homeHandler).Methods("GET").Name("home")
 	router.HandleFunc("/about", aboutHandler).Methods("GET").Name("about")
