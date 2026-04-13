@@ -30,17 +30,6 @@ type Article struct {
 	ID          int64
 }
 
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Fprint(w, "<h1>Hello, Welcome to goblog！</h1>")
-}
-
-func notFoundHandler(w http.ResponseWriter, r *http.Request) {
-
-	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprint(w, "<h1>The requested page was not found :(</h1><p>If you have any questions, please contact us.</p>")
-}
-
 func articlesShowHandler(w http.ResponseWriter, r *http.Request) {
 	id := route.GetRouteVariable("id", r)
 
@@ -156,13 +145,6 @@ func saveArticleToDB(title string, body string) (int64, error) {
 		return id, nil
 	}
 	return 0, err
-}
-
-func aboutHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w,
-		"This blog is intended for recording programming notes. If you have any feedback or suggestions, please contact us. "+
-			"<a href=\"mailto:summer@example.com\">summer@example.com</a>")
 }
 
 func forceHTMLMiddleware(next http.Handler) http.Handler {
@@ -368,9 +350,6 @@ func main() {
 	route.Initialize()
 	router = route.Router
 
-	router.HandleFunc("/", homeHandler).Methods("GET").Name("home")
-	router.HandleFunc("/about", aboutHandler).Methods("GET").Name("about")
-
 	router.HandleFunc("/articles/{id:[0-9]+}", articlesShowHandler).Methods("GET").Name("articles.show")
 	router.HandleFunc("/articles", articlesIndexHandler).Methods("GET").Name("articles.index")
 	router.HandleFunc("/articles", articlesStoreHandler).Methods("POST").Name("articles.store")
@@ -378,9 +357,6 @@ func main() {
 	router.HandleFunc("/articles/{id:[0-9]+}/edit", articlesEditHandler).Methods("GET").Name("articles.edit")
 	router.HandleFunc("/articles/{id:[0-9]+}", articlesUpdateHandler).Methods("POST").Name("articles.update")
 	router.HandleFunc("/articles/{id:[0-9]+}/delete", articlesDeleteHandler).Methods("POST").Name("articles.delete")
-
-	// Custom 404 page
-	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
 	router.Use(forceHTMLMiddleware)
 
