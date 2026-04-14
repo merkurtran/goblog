@@ -60,22 +60,6 @@ func saveArticleToDB(title string, body string) (int64, error) {
 	return 0, err
 }
 
-func validateArticleFormData(title string, body string) map[string]string {
-	errors := make(map[string]string)
-	if title == "" {
-		errors["title"] = "Title can't be left blank"
-	} else if len(title) < 3 || len(title) > 40 {
-		errors["title"] = "Title length must between 3 and 40 characters"
-	}
-
-	if body == "" {
-		errors["body"] = "Content can't be left blank"
-	} else if len(body) < 10 {
-		errors["body"] = "Content length must greater than 10 or equal 10"
-	}
-	return errors
-}
-
 func getArticleByID(id string) (Article, error) {
 	article := Article{}
 	query := "SELECT * FROM articles WHERE id = ?"
@@ -92,11 +76,6 @@ func (a Article) Delete() (rowsAffected int64, err error) {
 		return n, nil
 	}
 	return 0, nil
-}
-
-func getRouteVariable(parameterName string, r *http.Request) string {
-	vars := mux.Vars(r)
-	return vars[parameterName]
 }
 
 func main() {
