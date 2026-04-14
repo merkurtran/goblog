@@ -2,13 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/merkurtran/goblog/app/http/middlewares"
 	"github.com/merkurtran/goblog/bootstrap"
 	"github.com/merkurtran/goblog/pkg/database"
 	"github.com/merkurtran/goblog/pkg/logger"
@@ -61,23 +60,6 @@ func saveArticleToDB(title string, body string) (int64, error) {
 	return 0, err
 }
 
-func forceHTMLMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		next.ServeHTTP(w, r)
-	})
-}
-
-func removeTrailingSlash(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			r.URL.Path = strings.TrimSuffix(r.URL.Path, "/")
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
 func validateArticleFormData(title string, body string) map[string]string {
 	errors := make(map[string]string)
 	if title == "" {
@@ -99,38 +81,6 @@ func getArticleByID(id string) (Article, error) {
 	query := "SELECT * FROM articles WHERE id = ?"
 	err := db.QueryRow(query, id).Scan(&article.ID, &article.Title, &article.Body)
 	return article, err
-}
-
-func articlesDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	id := getRouteVariable("id", r)
-	article, err := getArticleByID(id)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, "404 article not found")
-		} else {
-			logger.LogError(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "Internal server error")
-		}
-	} else {
-		rowsAffected, err := article.Delete()
-		if err != nil {
-			logger.LogError(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "Internal server error")
-		} else {
-			if rowsAffected > 0 {
-				indexURL, _ := router.Get("articles.index").URL()
-				http.Redirect(w, r, indexURL.String(), http.StatusFound)
-			} else {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprint(w, "404 article not found")
-			}
-		}
-	}
-
 }
 
 func (a Article) Delete() (rowsAffected int64, err error) {
@@ -156,7 +106,6 @@ func main() {
 	bootstrap.SetupDB()
 	router = bootstrap.SetRoute()
 
-	router.Use(forceHTMLMiddleware)
-
-	http.ListenAndServe(":3002", removeTrailingSlash(router))
+	err := http.ListenAndServe(":3002", middlewares.RemoveTrailingSlash(router))
+	logger.LogError(err)
 }
