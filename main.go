@@ -156,8 +156,6 @@ func main() {
 	bootstrap.SetupDB()
 	router = bootstrap.SetRoute()
 
-	router.HandleFunc("/articles/{id:[0-9]+}/delete", articlesDeleteHandler).Methods("POST").Name("articles.delete")
-
 	router.Use(forceHTMLMiddleware)
 
 	http.ListenAndServe(":3002", removeTrailingSlash(router))
