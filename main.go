@@ -38,29 +38,6 @@ func RouteName2URL(routename string, pairs ...string) string {
 	return url.String()
 }
 
-func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT * FROM articles")
-	logger.LogError(err)
-	defer rows.Close()
-
-	var articles []Article
-	for rows.Next() {
-		var article Article
-		err := rows.Scan(&article.ID, &article.Title, &article.Body)
-		logger.LogError(err)
-		articles = append(articles, article)
-	}
-
-	err = rows.Err()
-	logger.LogError(err)
-
-	tmpl, err := template.ParseFiles("resources/views/articles/index.gohtml")
-	logger.LogError(err)
-
-	err = tmpl.Execute(w, articles)
-	logger.LogError(err)
-}
-
 func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
 
 	title := r.PostFormValue("title")
@@ -267,15 +244,6 @@ func getArticleByID(id string) (Article, error) {
 	return article, err
 }
 
-func (a Article) Link() string {
-	showURL, err := router.Get("articles.show").URL("id", strconv.FormatInt(a.ID, 10))
-	if err != nil {
-		logger.LogError(err)
-		return ""
-	}
-	return showURL.String()
-}
-
 func articlesDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	id := getRouteVariable("id", r)
 	article, err := getArticleByID(id)
@@ -331,7 +299,6 @@ func main() {
 	bootstrap.SetupDB()
 	router = bootstrap.SetRoute()
 
-	router.HandleFunc("/articles", articlesIndexHandler).Methods("GET").Name("articles.index")
 	router.HandleFunc("/articles", articlesStoreHandler).Methods("POST").Name("articles.store")
 	router.HandleFunc("/articles/create", articlesCreateHandler).Methods("GET").Name("articles.create")
 	router.HandleFunc("/articles/{id:[0-9]+}/edit", articlesEditHandler).Methods("GET").Name("articles.edit")
