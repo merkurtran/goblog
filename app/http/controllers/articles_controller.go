@@ -3,14 +3,13 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"text/template"
 
 	"github.com/merkurtran/goblog/app/models/article"
 	"github.com/merkurtran/goblog/pkg/logger"
 	"github.com/merkurtran/goblog/pkg/route"
-	"github.com/merkurtran/goblog/pkg/types"
+	"github.com/merkurtran/goblog/pkg/view"
 	"gorm.io/gorm"
 )
 
@@ -37,21 +36,7 @@ func (*ArticlesController) Show(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "Internal Server error")
 		}
 	} else {
-		viewDir := "resources/views"
-		files, err := filepath.Glob(viewDir + "/layouts/*.gohtml")
-		logger.LogError(err)
-
-		newFiles := append(files, viewDir+"/articles/show.gohtml")
-
-		tmpl, err := template.New("show.gohtml").
-			Funcs(template.FuncMap{
-				"RouteName2URL":  route.Name2URL,
-				"Uint64ToString": types.Uint64ToString,
-			}).ParseFiles(newFiles...)
-		logger.LogError(err)
-
-		err = tmpl.ExecuteTemplate(w, "app", article)
-		logger.LogError(err)
+		view.Render(w, "articles.show", article)
 	}
 	fmt.Fprint(w, "articles ID："+id)
 }
@@ -64,17 +49,7 @@ func (*ArticlesController) Index(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprint(w, "Internal Server Error")
 	} else {
-		viewDir := "resources/views"
-		files, err := filepath.Glob(viewDir + "/layouts/*.gohtml")
-		logger.LogError(err)
-
-		newFiles := append(files, viewDir+"/articles/index.gohtml")
-
-		tmpl, err := template.ParseFiles(newFiles...)
-		logger.LogError(err)
-
-		err = tmpl.ExecuteTemplate(w, "app", articles)
-		logger.LogError(err)
+		view.Render(w, "articles.index", articles)
 	}
 }
 
