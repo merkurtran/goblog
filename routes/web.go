@@ -27,5 +27,9 @@ func RegisterWebRoutes(r *mux.Router) {
 	r.PathPrefix("/css/").Handler(http.FileServer(http.Dir("./public")))
 	r.PathPrefix("/js/").Handler(http.FileServer(http.Dir("./public")))
 
+	auc := new(controllers.AuthController)
+	r.HandleFunc("/auth/register", auc.Register).Methods("POST").Name("auth.doregister")
+	// r.HandleFunc("/auth/do-register", auc.DoRegister).Methods("POST").Name("auth.doregister")
+
 	// r.Use(middlewares.ForceHTML)
 }
