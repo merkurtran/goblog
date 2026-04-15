@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"text/template"
 
@@ -52,10 +53,16 @@ func (*ArticlesController) Index(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprint(w, "Internal Server Error")
 	} else {
-		tmpl, err := template.ParseFiles("resources/views/articles/index.gohtml")
+		viewDir := "resources/views"
+		files, err := filepath.Glob(viewDir + "/layouts/*.gohtml")
 		logger.LogError(err)
 
-		err = tmpl.Execute(w, articles)
+		newFiles := append(files, viewDir+"/articles/index.gohtml")
+
+		tmpl, err := template.ParseFiles(newFiles...)
+		logger.LogError(err)
+
+		err = tmpl.ExecuteTemplate(w, "app", articles)
 		logger.LogError(err)
 	}
 }
