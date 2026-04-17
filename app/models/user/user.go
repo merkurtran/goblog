@@ -1,6 +1,8 @@
 package user
 
-import "github.com/merkurtran/goblog/app/models"
+import (
+	"github.com/merkurtran/goblog/app/models"
+)
 
 type User struct {
 	models.BaseModel
@@ -9,4 +11,8 @@ type User struct {
 	Email           string `gorm:"type:varchar(255);unique;" valid:"email"`
 	Password        string `gorm:"type:varchar(255)" valid:"password"`
 	PasswordConfirm string `gorm:"-" valid:"password_confirm"`
+}
+
+func (user *User) ComparePassword(password string) bool {
+	return user.Password == password
 }
