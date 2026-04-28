@@ -40,6 +40,7 @@ func (*AuthController) DoRegister(w http.ResponseWriter, r *http.Request) {
 	} else {
 		_user.Create()
 		if _user.ID > 0 {
+			auth.Login(_user)
 			http.Redirect(w, r, "/", http.StatusFound)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
